@@ -9,25 +9,30 @@ This project is a cloud-based digital signage solution consisting of:
 -   Node.js installed.
 -   MongoDB installed and running (or update `MONGO_URI` in `backend/.env`).
 
-## Setup & Run
+## Setup & Run (Local)
 
-### 1. Backend (API)
-Open a terminal:
-```bash
-cd backend
-npm install
-npm run dev
-```
-Server runs on `http://localhost:5001`.
+1.  **Install Dependencies**:
+    ```bash
+    cd frontend
+    npm install
+    ```
 
-### 2. Frontend (CMS & Player)
-Open a second terminal:
-```bash
-cd frontend
-npm install
-npm run dev
-```
-Frontend runs on `http://localhost:3001`.
+2.  **Run Development Server**:
+    ```bash
+    npm run dev
+    ```
+    The app will start on `http://localhost:3001`.
+
+## Deployment (Vercel)
+
+This project is optimized for Vercel.
+
+1.  Push this repository to GitHub.
+2.  Import the project into Vercel.
+3.  **Root Directory**: Select `frontend`.
+4.  Deploy!
+
+*Note: The current database is in-memory. Data will reset on every deployment. For production, connect a MongoDB Atlas database.*
 
 ## Usage Guide
 
