@@ -55,7 +55,7 @@ export default function PlayerPage() {
             // Send heartbeat immediately when content changes
             const sendHeartbeat = async () => {
                 try {
-                    await axios.post(`/api/devices/${pairingCode}/heartbeat`, {
+                    await axios.post(`/api/devices/heartbeat/${pairingCode}`, {
                         currentContent: content[currentIndex]
                     });
                 } catch (err) {

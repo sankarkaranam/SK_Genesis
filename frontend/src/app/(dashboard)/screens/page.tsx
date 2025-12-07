@@ -55,7 +55,7 @@ export default function ScreensPage() {
 
     const handleAssign = async () => {
         try {
-            await axios.post(`/api/devices/${selectedDevice._id}/assign-playlist`, { playlistId: selectedPlaylistId });
+            await axios.post(`/api/devices/assign/${selectedDevice._id}`, { playlistId: selectedPlaylistId });
             setShowAssignModal(false);
             fetchDevices();
         } catch (err) {
