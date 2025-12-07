@@ -8,7 +8,7 @@ export default function PlaylistsPage() {
     const [contentList, setContentList] = useState([]);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [newPlaylist, setNewPlaylist] = useState({ name: '', items: [] });
-    const [selectedContent, setSelectedContent] = useState([]);
+    const [selectedContent, setSelectedContent] = useState<string[]>([]);
 
     useEffect(() => {
         fetchPlaylists();
@@ -46,7 +46,7 @@ export default function PlaylistsPage() {
         }
     };
 
-    const toggleContentSelection = (id) => {
+    const toggleContentSelection = (id: string) => {
         if (selectedContent.includes(id)) {
             setSelectedContent(selectedContent.filter(item => item !== id));
         } else {
