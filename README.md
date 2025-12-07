@@ -53,3 +53,4 @@ This project is optimized for Vercel.
     -   `src/app/page.tsx`: Dashboard.
     -   `src/app/screens/page.tsx`: Device management.
     -   `src/app/player/page.tsx`: Player simulation.
+# SK_Genesis
