@@ -94,7 +94,7 @@ export default function ScreensPage() {
                             <p className="text-xs text-gray-400 mb-2">Current Playlist</p>
                             <div className="flex justify-between items-center mb-3">
                                 <span className="text-sm font-medium text-gray-700">
-                                    {playlists.find((p: any) => p._id === device.assignedPlaylist)?.name || 'None Assigned'}
+                                    {(playlists.find((p: any) => p._id === device.assignedPlaylist) as any)?.name || 'None Assigned'}
                                 </span>
                                 <button
                                     onClick={() => openAssignModal(device)}
