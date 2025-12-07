@@ -91,17 +91,50 @@ export default function ContentPage() {
                                 value={newContent.title}
                                 onChange={(e) => setNewContent({ ...newContent, title: e.target.value })}
                             />
-                            <input
-                                type="text"
-                                placeholder="Image/Video URL"
-                                className="w-full border p-2 rounded text-gray-800"
-                                value={newContent.url}
-                                onChange={(e) => setNewContent({ ...newContent, url: e.target.value })}
-                            />
+
+                            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-gray-50">
+                                <input
+                                    type="file"
+                                    accept="image/*,video/*"
+                                    className="hidden"
+                                    id="file-upload"
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                            const reader = new FileReader();
+                                            reader.onloadend = () => {
+                                                setNewContent({
+                                                    ...newContent,
+                                                    url: reader.result as string,
+                                                    type: file.type.startsWith('video') ? 'video' : 'image',
+                                                    title: newContent.title || file.name
+                                                });
+                                            };
+                                            reader.readAsDataURL(file);
+                                        }
+                                    }}
+                                />
+                                <label htmlFor="file-upload" className="cursor-pointer flex flex-col items-center">
+                                    <Upload size={32} className="text-gray-400 mb-2" />
+                                    <span className="text-sm text-gray-600">Click to upload file</span>
+                                    <span className="text-xs text-gray-400 mt-1">(Max 5MB for demo)</span>
+                                </label>
+                            </div>
+
+                            {newContent.url && (
+                                <div className="mt-2">
+                                    <p className="text-xs text-green-600 font-medium">File selected!</p>
+                                    {newContent.type === 'image' && (
+                                        <img src={newContent.url} alt="Preview" className="h-20 w-auto mt-2 rounded border" />
+                                    )}
+                                </div>
+                            )}
+
                             <select
                                 className="w-full border p-2 rounded text-gray-800"
                                 value={newContent.type}
                                 onChange={(e) => setNewContent({ ...newContent, type: e.target.value })}
+                                disabled
                             >
                                 <option value="image">Image</option>
                                 <option value="video">Video</option>

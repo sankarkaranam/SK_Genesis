@@ -8,13 +8,28 @@ export default function PlayerPage() {
     const [deviceName, setDeviceName] = useState('');
 
     useEffect(() => {
-        const code = Math.floor(100000 + Math.random() * 900000).toString();
-        setPairingCode(code);
+        let currentPairingCode = '';
+        // Try to recover state from localStorage
+        const savedCode = localStorage.getItem('sk_pairing_code');
+        if (savedCode) {
+            currentPairingCode = savedCode;
+            setPairingCode(savedCode);
+            // We assume it's paired if we have a code, but we should verify with backend ideally.
+            // For now, let's just set it and let the heartbeat/fetch logic run.
+            setIsPaired(true);
+        } else {
+            // Generate new code
+            const newCode = Math.floor(100000 + Math.random() * 900000).toString();
+            currentPairingCode = newCode;
+            setPairingCode(newCode);
+            localStorage.setItem('sk_pairing_code', newCode);
+        }
 
         const interval = setInterval(async () => {
+            if (!currentPairingCode) return; // Ensure code is set before polling
             try {
                 const res = await axios.get('/api/devices');
-                const device = res.data.find((d: any) => d.pairingCode === code);
+                const device = res.data.find((d: any) => d.pairingCode === currentPairingCode);
 
                 if (device && device.isPaired) {
                     setIsPaired(true);
