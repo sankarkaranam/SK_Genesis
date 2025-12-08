@@ -1,13 +1,9 @@
 import { NextResponse } from 'next/server';
+import { db } from '@/lib/db';
 
 // Global In-Memory State (Best effort for Vercel Demo)
-// By keeping this in a single file, we maximize the chance of data persistence
-// across requests if they hit the same warm lambda.
-let globalState = {
-    devices: [] as any[],
-    playlists: [] as any[],
-    content: [] as any[]
-};
+// We use the shared 'db' instance so all API routes see the same data.
+const globalState = db;
 
 
 

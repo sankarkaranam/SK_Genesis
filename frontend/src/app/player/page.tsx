@@ -75,27 +75,39 @@ export default function PlayerPage() {
         }
     }, [isPaired, pairingCode]);
 
+    // Heartbeat Loop (Runs always, even if no content)
+    useEffect(() => {
+        if (!isPaired || !pairingCode) return;
+
+        const sendHeartbeat = async () => {
+            try {
+                const currentItem = content.length > 0 ? content[currentIndex] : null;
+                await axios.post(`/api/devices/heartbeat/${pairingCode}`, {
+                    currentContent: currentItem
+                });
+            } catch (err) {
+                console.error("Heartbeat failed", err);
+            }
+        };
+
+        // Send immediately
+        sendHeartbeat();
+
+        // Then every 10 seconds
+        const interval = setInterval(sendHeartbeat, 10000);
+        return () => clearInterval(interval);
+    }, [isPaired, pairingCode, content, currentIndex]);
+
+    // Content Rotation Loop
     useEffect(() => {
         if (content.length > 0) {
-            // Send heartbeat immediately when content changes
-            const sendHeartbeat = async () => {
-                try {
-                    await axios.post(`/api/devices/heartbeat/${pairingCode}`, {
-                        currentContent: content[currentIndex]
-                    });
-                } catch (err) {
-                    console.error("Heartbeat failed", err);
-                }
-            };
-            sendHeartbeat();
-
             const timer = setInterval(() => {
                 setCurrentIndex((prev) => (prev + 1) % content.length);
             }, 5000); // Rotate every 5 seconds
 
             return () => clearInterval(timer);
         }
-    }, [content, currentIndex, pairingCode]);
+    }, [content]);
 
     if (isPaired) {
         return (
