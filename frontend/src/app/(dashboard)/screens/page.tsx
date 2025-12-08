@@ -100,10 +100,24 @@ export default function ScreensPage() {
             }
 
             // Try API
-            await axios.post(`/api/devices/assign/${selectedDevice._id}`, {
-                playlistId: selectedPlaylistId,
-                playlistData,
-                deviceData: selectedDevice // Send full device data for self-healing
+            // await axios.post(`/api/devices/assign/${selectedDevice._id}`, { ... });
+
+            // NEW: Global Sync Strategy
+            // We send the ENTIRE local state to the server to ensure it has everything
+            const localContent = JSON.parse(localStorage.getItem('sk_demo_content') || '[]');
+            const localPlaylists = JSON.parse(localStorage.getItem('sk_demo_playlists') || '[]');
+
+            // Update the specific device in our local list first
+            const deviceToSync = { ...selectedDevice, assignedPlaylist: selectedPlaylistId };
+            const allDevices = updatedDevices; // This already has the update
+
+            await axios.post('/api/sync', {
+                action: 'sync_dashboard',
+                data: {
+                    devices: allDevices,
+                    playlists: localPlaylists,
+                    content: localContent
+                }
             });
 
             setShowAssignModal(false);

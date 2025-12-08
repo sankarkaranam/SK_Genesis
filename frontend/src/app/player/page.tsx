@@ -52,7 +52,8 @@ export default function PlayerPage() {
             const fetchContent = async () => {
                 try {
                     // Fetch content specifically for this device (based on assigned playlist)
-                    const res = await axios.get(`/api/devices/playlist/${pairingCode}`);
+                    // NEW: Use Sync API
+                    const res = await axios.get(`/api/sync?code=${pairingCode}`);
                     setContent(res.data.items || []);
                 } catch (err) {
                     console.error("Failed to fetch content", err);

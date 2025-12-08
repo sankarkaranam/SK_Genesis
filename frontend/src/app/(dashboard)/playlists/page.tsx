@@ -26,7 +26,17 @@ export default function PlaylistsPage() {
             const res = await axios.get('/api/playlists');
             const apiPlaylists = res.data;
             const localPlaylists = JSON.parse(localStorage.getItem('sk_demo_playlists') || '[]');
-            const merged = [...apiPlaylists, ...localPlaylists.filter((l: any) => !apiPlaylists.find((a: any) => a._id === l._id))];
+
+            // HYBRID SYNC FIX: Prioritize LocalStorage as the "Source of Truth" for this demo
+            // If a playlist exists locally, use it. If it's only on API, use API.
+            const merged = [...localPlaylists];
+
+            apiPlaylists.forEach((apiP: any) => {
+                if (!merged.find(localP => localP._id === apiP._id)) {
+                    merged.push(apiP);
+                }
+            });
+
             setPlaylists(merged);
         } catch (err) {
             console.error(err);
@@ -39,7 +49,15 @@ export default function PlaylistsPage() {
             const res = await axios.get('/api/content');
             const apiContent = res.data;
             const localContent = JSON.parse(localStorage.getItem('sk_demo_content') || '[]');
-            const merged = [...apiContent, ...localContent.filter((l: any) => !apiContent.find((a: any) => a._id === l._id))];
+
+            // Prioritize LocalStorage
+            const merged = [...localContent];
+            apiContent.forEach((apiC: any) => {
+                if (!merged.find(localC => localC._id === apiC._id)) {
+                    merged.push(apiC);
+                }
+            });
+
             setContentList(merged);
         } catch (err) {
             console.error(err);
@@ -73,15 +91,24 @@ export default function PlaylistsPage() {
             const items = selectedContentIds.map(id => ({ contentId: id, duration: 10 }));
             const updatedPlaylist = { ...editingPlaylist, name: playlistName, items };
 
-            // In a real app: await axios.put(`/api/playlists/${editingPlaylist._id}`, updatedPlaylist);
-            // For demo: Update local state and localStorage
-            const updatedList = playlists.map(p => p._id === editingPlaylist._id ? updatedPlaylist : p);
+            // Update LocalStorage FIRST (Source of Truth)
+            const currentLocal = JSON.parse(localStorage.getItem('sk_demo_playlists') || '[]');
+            const updatedList = currentLocal.map((p: any) => p._id === editingPlaylist._id ? updatedPlaylist : p);
             setPlaylists(updatedList);
             localStorage.setItem('sk_demo_playlists', JSON.stringify(updatedList));
 
+            // Try to update Server (Best Effort)
+            // We use the Sync API to push this update to the server
+            await axios.post('/api/sync', {
+                action: 'sync_dashboard',
+                data: { playlists: updatedList }
+            });
+
             closeModals();
         } catch (err) {
-            alert('Failed to update playlist');
+            console.error('Update failed', err);
+            alert('Saved locally, but server sync failed.');
+            closeModals();
         }
     };
 
