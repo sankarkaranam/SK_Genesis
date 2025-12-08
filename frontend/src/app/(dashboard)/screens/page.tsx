@@ -6,6 +6,7 @@ import { Plus, Monitor, Trash2, Edit2, X, Check, RefreshCw } from 'lucide-react'
 export default function ScreensPage() {
     const [devices, setDevices] = useState<any[]>([]);
     const [playlists, setPlaylists] = useState<any[]>([]);
+    const [schedules, setSchedules] = useState<any[]>([]);
 
     // Modals
     const [showPairModal, setShowPairModal] = useState(false);
@@ -16,11 +17,13 @@ export default function ScreensPage() {
     const [pairCode, setPairCode] = useState('');
     const [selectedDevice, setSelectedDevice] = useState<any>(null);
     const [selectedPlaylistId, setSelectedPlaylistId] = useState('');
+    const [selectedScheduleId, setSelectedScheduleId] = useState('');
     const [editName, setEditName] = useState('');
 
     useEffect(() => {
         fetchDevices();
         fetchPlaylists();
+        fetchSchedules();
         // Auto-sync on load to ensure server has latest data (Server Hydration)
         syncToServer();
     }, []);
@@ -30,11 +33,13 @@ export default function ScreensPage() {
             const localDevices = JSON.parse(localStorage.getItem('sk_demo_devices') || '[]');
             const localPlaylists = JSON.parse(localStorage.getItem('sk_demo_playlists') || '[]');
             const localContent = JSON.parse(localStorage.getItem('sk_demo_content') || '[]');
+            const localSchedules = JSON.parse(localStorage.getItem('sk_demo_schedules') || '[]');
 
             console.log('Hydrating Server with:', {
                 devices: localDevices.length,
                 playlists: localPlaylists.length,
-                content: localContent.length
+                content: localContent.length,
+                schedules: localSchedules.length
             });
 
             await axios.post('/api/sync', {
@@ -42,7 +47,8 @@ export default function ScreensPage() {
                 data: {
                     devices: localDevices,
                     playlists: localPlaylists,
-                    content: localContent
+                    content: localContent,
+                    schedules: localSchedules
                 }
             });
             console.log('Server Hydration Complete');
@@ -79,6 +85,18 @@ export default function ScreensPage() {
         }
     };
 
+    const fetchSchedules = async () => {
+        try {
+            const res = await axios.get('/api/schedules').catch(() => ({ data: [] }));
+            const apiSchedules = res.data;
+            const localSchedules = JSON.parse(localStorage.getItem('sk_demo_schedules') || '[]');
+            const merged = [...apiSchedules, ...localSchedules.filter((l: any) => !apiSchedules.find((a: any) => a._id === l._id))];
+            setSchedules(merged);
+        } catch (err) {
+            setSchedules(JSON.parse(localStorage.getItem('sk_demo_schedules') || '[]'));
+        }
+    };
+
     const handlePair = async () => {
         if (!pairCode) return alert('Please enter a 6-digit code');
         try {
@@ -104,47 +122,30 @@ export default function ScreensPage() {
         try {
             // Optimistic update
             const updatedDevices = devices.map((d: any) =>
-                d._id === selectedDevice._id ? { ...d, assignedPlaylist: selectedPlaylistId } : d
+                d._id === selectedDevice._id ? {
+                    ...d,
+                    assignedPlaylist: selectedPlaylistId,
+                    assignedSchedule: selectedScheduleId
+                } : d
             );
             setDevices(updatedDevices);
             localStorage.setItem('sk_demo_devices', JSON.stringify(updatedDevices));
 
-            // Prepare payload with full data for server persistence
-            const playlist = playlists.find((p: any) => p._id === selectedPlaylistId);
-            let playlistData = null;
-
-            if (playlist) {
-                // Enrich playlist items with content details from local storage if needed
-                // We need to fetch content list first if we don't have it in state, but we can try to read from LS
-                const localContent = JSON.parse(localStorage.getItem('sk_demo_content') || '[]');
-
-                playlistData = {
-                    ...playlist,
-                    items: playlist.items.map((item: any) => ({
-                        ...item,
-                        contentDetails: localContent.find((c: any) => c._id === item.contentId)
-                    }))
-                };
-            }
-
-            // Try API
-            // await axios.post(`/api/devices/assign/${selectedDevice._id}`, { ... });
-
             // NEW: Global Sync Strategy
-            // We send the ENTIRE local state to the server to ensure it has everything
             const localContent = JSON.parse(localStorage.getItem('sk_demo_content') || '[]');
             const localPlaylists = JSON.parse(localStorage.getItem('sk_demo_playlists') || '[]');
+            const localSchedules = JSON.parse(localStorage.getItem('sk_demo_schedules') || '[]');
 
             // Update the specific device in our local list first
-            const deviceToSync = { ...selectedDevice, assignedPlaylist: selectedPlaylistId };
-            const allDevices = updatedDevices; // This already has the update
+            const allDevices = updatedDevices;
 
             await axios.post('/api/sync', {
                 action: 'sync_dashboard',
                 data: {
                     devices: allDevices,
                     playlists: localPlaylists,
-                    content: localContent
+                    content: localContent,
+                    schedules: localSchedules
                 }
             });
 
@@ -188,6 +189,7 @@ export default function ScreensPage() {
     const openAssignModal = (device: any) => {
         setSelectedDevice(device);
         setSelectedPlaylistId(device.assignedPlaylist || '');
+        setSelectedScheduleId(device.assignedSchedule || '');
         setShowAssignModal(true);
     };
 
@@ -283,7 +285,10 @@ export default function ScreensPage() {
 
                                     <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 mb-4">
                                         <span className="text-sm font-medium text-gray-800 block truncate">
-                                            {(playlists.find((p: any) => p._id === device.assignedPlaylist) as any)?.name || 'None Assigned'}
+                                            {device.assignedSchedule
+                                                ? `📅 ${schedules.find((s: any) => s._id === device.assignedSchedule)?.name || 'Unknown Schedule'}`
+                                                : (playlists.find((p: any) => p._id === device.assignedPlaylist)?.name || 'None Assigned')
+                                            }
                                         </span>
                                     </div>
 
@@ -345,7 +350,7 @@ export default function ScreensPage() {
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-in fade-in zoom-in duration-200">
                         <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-                            <h2 className="text-xl font-bold text-gray-800">Assign Playlist</h2>
+                            <h2 className="text-xl font-bold text-gray-800">Assign Content</h2>
                             <button onClick={() => setShowAssignModal(false)} className="text-gray-400 hover:text-gray-600">
                                 <X size={24} />
                             </button>
@@ -353,20 +358,49 @@ export default function ScreensPage() {
                         <div className="p-6">
                             <p className="text-sm text-gray-500 mb-4">Select content for <b className="text-gray-800">{selectedDevice?.name}</b></p>
 
-                            <select
-                                className="w-full border border-gray-200 p-3 rounded-xl text-gray-800 focus:ring-2 focus:ring-blue-500 outline-none"
-                                value={selectedPlaylistId}
-                                onChange={(e) => setSelectedPlaylistId(e.target.value)}
-                            >
-                                <option value="">-- Select a Playlist --</option>
-                                {playlists.map((p: any) => (
-                                    <option key={p._id} value={p._id}>{p.name} ({p.items?.length || 0} items)</option>
-                                ))}
-                            </select>
+                            <div className="mb-4">
+                                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Option 1: Single Playlist</label>
+                                <select
+                                    className="w-full border border-gray-200 p-3 rounded-xl text-gray-800 focus:ring-2 focus:ring-blue-500 outline-none"
+                                    value={selectedPlaylistId}
+                                    onChange={(e) => {
+                                        setSelectedPlaylistId(e.target.value);
+                                        setSelectedScheduleId(''); // Clear schedule if playlist selected
+                                    }}
+                                >
+                                    <option value="">-- Select a Playlist --</option>
+                                    {playlists.map((p: any) => (
+                                        <option key={p._id} value={p._id}>{p.name} ({p.items?.length || 0} items)</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="relative flex py-2 items-center">
+                                <div className="flex-grow border-t border-gray-200"></div>
+                                <span className="flex-shrink-0 mx-4 text-gray-400 text-xs">OR</span>
+                                <div className="flex-grow border-t border-gray-200"></div>
+                            </div>
+
+                            <div className="mb-6">
+                                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Option 2: Schedule (Time-based)</label>
+                                <select
+                                    className="w-full border border-gray-200 p-3 rounded-xl text-gray-800 focus:ring-2 focus:ring-blue-500 outline-none"
+                                    value={selectedScheduleId}
+                                    onChange={(e) => {
+                                        setSelectedScheduleId(e.target.value);
+                                        setSelectedPlaylistId(''); // Clear playlist if schedule selected
+                                    }}
+                                >
+                                    <option value="">-- Select a Schedule --</option>
+                                    {schedules.map((s: any) => (
+                                        <option key={s._id} value={s._id}>{s.name} ({s.slots?.length || 0} slots)</option>
+                                    ))}
+                                </select>
+                            </div>
 
                             <button
                                 onClick={handleAssign}
-                                className="w-full mt-6 bg-blue-600 text-white py-3.5 rounded-xl font-semibold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
+                                className="w-full bg-blue-600 text-white py-3.5 rounded-xl font-semibold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
                             >
                                 Save Assignment
                             </button>

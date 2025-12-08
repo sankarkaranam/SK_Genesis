@@ -73,16 +73,44 @@ export async function GET(request: Request) {
     const device = globalState.devices.find(d => d.pairingCode === code);
 
     if (!device) {
-        // If device not found in memory, it might be a cold start.
-        // Return empty, but the Dashboard should have "healed" this by now.
         return NextResponse.json({ items: [], status: 'not_found' });
     }
 
-    if (!device.assignedPlaylist) {
+    let targetPlaylistId = device.assignedPlaylist;
+
+    // SCHEDULE LOGIC: Override playlist if a schedule is active
+    if (device.assignedSchedule) {
+        const schedule = globalState.schedules.find(s => s._id === device.assignedSchedule);
+        if (schedule) {
+            const now = new Date();
+            const currentTime = now.getHours() * 60 + now.getMinutes(); // Minutes from midnight
+
+            // Find active slot
+            const activeSlot = schedule.slots.find((slot: any) => {
+                const [startH, startM] = slot.startTime.split(':').map(Number);
+                const [endH, endM] = slot.endTime.split(':').map(Number);
+                const start = startH * 60 + startM;
+                const end = endH * 60 + endM;
+                return currentTime >= start && currentTime < end;
+            });
+
+            if (activeSlot) {
+                targetPlaylistId = activeSlot.playlistId;
+            } else {
+                // No slot active right now? 
+                // Option A: Show nothing (return empty)
+                // Option B: Fallback to default playlist (if we had one)
+                // For now, let's return empty/idle
+                return NextResponse.json({ items: [], status: 'schedule_idle' });
+            }
+        }
+    }
+
+    if (!targetPlaylistId) {
         return NextResponse.json({ items: [], status: 'no_playlist' });
     }
 
-    const playlist = globalState.playlists.find(p => p._id === device.assignedPlaylist);
+    const playlist = globalState.playlists.find(p => p._id === targetPlaylistId);
     if (!playlist) {
         return NextResponse.json({ items: [], status: 'playlist_not_found' });
     }
