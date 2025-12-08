@@ -21,7 +21,35 @@ export default function ScreensPage() {
     useEffect(() => {
         fetchDevices();
         fetchPlaylists();
+        // Auto-sync on load to ensure server has latest data (Server Hydration)
+        syncToServer();
     }, []);
+
+    const syncToServer = async () => {
+        try {
+            const localDevices = JSON.parse(localStorage.getItem('sk_demo_devices') || '[]');
+            const localPlaylists = JSON.parse(localStorage.getItem('sk_demo_playlists') || '[]');
+            const localContent = JSON.parse(localStorage.getItem('sk_demo_content') || '[]');
+
+            console.log('Hydrating Server with:', {
+                devices: localDevices.length,
+                playlists: localPlaylists.length,
+                content: localContent.length
+            });
+
+            await axios.post('/api/sync', {
+                action: 'sync_dashboard',
+                data: {
+                    devices: localDevices,
+                    playlists: localPlaylists,
+                    content: localContent
+                }
+            });
+            console.log('Server Hydration Complete');
+        } catch (err) {
+            console.error('Server Hydration Failed:', err);
+        }
+    };
 
     const fetchDevices = async () => {
         try {
@@ -176,13 +204,22 @@ export default function ScreensPage() {
                     <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Screens</h1>
                     <p className="text-gray-500 mt-1">Manage your connected displays</p>
                 </div>
-                <button
-                    onClick={() => setShowPairModal(true)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-medium shadow-lg shadow-blue-200 transition-all flex items-center space-x-2"
-                >
-                    <Plus size={20} />
-                    <span>Add Screen</span>
-                </button>
+                <div className="flex space-x-3">
+                    <button
+                        onClick={() => syncToServer().then(() => alert('Players Synced!'))}
+                        className="bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 px-4 py-3 rounded-xl font-medium transition-all flex items-center space-x-2 shadow-sm"
+                    >
+                        <RefreshCw size={20} />
+                        <span>Sync Players</span>
+                    </button>
+                    <button
+                        onClick={() => setShowPairModal(true)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-medium shadow-lg shadow-blue-200 transition-all flex items-center space-x-2"
+                    >
+                        <Plus size={20} />
+                        <span>Add Screen</span>
+                    </button>
+                </div>
             </div>
 
             {devices.length === 0 ? (
