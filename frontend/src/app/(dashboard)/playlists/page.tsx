@@ -4,8 +4,8 @@ import axios from 'axios';
 import { Plus, ListVideo, Trash2 } from 'lucide-react';
 
 export default function PlaylistsPage() {
-    const [playlists, setPlaylists] = useState([]);
-    const [contentList, setContentList] = useState([]);
+    const [playlists, setPlaylists] = useState<any[]>([]);
+    const [contentList, setContentList] = useState<any[]>([]);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [newPlaylist, setNewPlaylist] = useState({ name: '', items: [] });
     const [selectedContent, setSelectedContent] = useState<string[]>([]);
@@ -18,25 +18,39 @@ export default function PlaylistsPage() {
     const fetchPlaylists = async () => {
         try {
             const res = await axios.get('/api/playlists');
-            setPlaylists(res.data);
+            const apiPlaylists = res.data;
+            const localPlaylists = JSON.parse(localStorage.getItem('sk_demo_playlists') || '[]');
+            const merged = [...apiPlaylists, ...localPlaylists.filter((l: any) => !apiPlaylists.find((a: any) => a._id === l._id))];
+            setPlaylists(merged);
         } catch (err) {
             console.error(err);
+            setPlaylists(JSON.parse(localStorage.getItem('sk_demo_playlists') || '[]'));
         }
     };
 
     const fetchContent = async () => {
         try {
             const res = await axios.get('/api/content');
-            setContentList(res.data);
+            const apiContent = res.data;
+            const localContent = JSON.parse(localStorage.getItem('sk_demo_content') || '[]');
+            const merged = [...apiContent, ...localContent.filter((l: any) => !apiContent.find((a: any) => a._id === l._id))];
+            setContentList(merged);
         } catch (err) {
             console.error(err);
+            setContentList(JSON.parse(localStorage.getItem('sk_demo_content') || '[]'));
         }
     };
 
     const handleCreate = async () => {
         try {
             const items = selectedContent.map(id => ({ contentId: id, duration: 10 }));
-            await axios.post('/api/playlists', { ...newPlaylist, items });
+            const res = await axios.post('/api/playlists', { ...newPlaylist, items });
+
+            // Save to LocalStorage
+            const currentLocal = JSON.parse(localStorage.getItem('sk_demo_playlists') || '[]');
+            currentLocal.push(res.data);
+            localStorage.setItem('sk_demo_playlists', JSON.stringify(currentLocal));
+
             setShowCreateModal(false);
             setNewPlaylist({ name: '', items: [] });
             setSelectedContent([]);

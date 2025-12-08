@@ -4,14 +4,20 @@ import axios from 'axios';
 import { Plus, Monitor } from 'lucide-react';
 
 export default function ScreensPage() {
-    const [devices, setDevices] = useState([]);
+    const [devices, setDevices] = useState<any[]>([]);
     const [showPairModal, setShowPairModal] = useState(false);
     const [pairCode, setPairCode] = useState('');
 
     const [showAssignModal, setShowAssignModal] = useState(false);
     const [selectedDevice, setSelectedDevice] = useState<any>(null);
-    const [playlists, setPlaylists] = useState([]);
+    const [playlists, setPlaylists] = useState<any[]>([]);
     const [selectedPlaylistId, setSelectedPlaylistId] = useState('');
+
+    const openAssignModal = (device: any) => {
+        setSelectedDevice(device);
+        setSelectedPlaylistId(device.assignedPlaylist || '');
+        setShowAssignModal(true);
+    };
 
     useEffect(() => {
         fetchDevices();
@@ -21,45 +27,67 @@ export default function ScreensPage() {
     const fetchDevices = async () => {
         try {
             const res = await axios.get('/api/devices');
-            setDevices(res.data);
+            const apiDevices = res.data;
+            const localDevices = JSON.parse(localStorage.getItem('sk_demo_devices') || '[]');
+
+            // Merge unique devices by ID
+            const merged = [...apiDevices, ...localDevices.filter((l: any) => !apiDevices.find((a: any) => a._id === l._id))];
+            setDevices(merged);
         } catch (err) {
             console.error(err);
+            setDevices(JSON.parse(localStorage.getItem('sk_demo_devices') || '[]'));
         }
     };
 
     const fetchPlaylists = async () => {
         try {
             const res = await axios.get('/api/playlists');
-            setPlaylists(res.data);
+            const apiPlaylists = res.data;
+            const localPlaylists = JSON.parse(localStorage.getItem('sk_demo_playlists') || '[]');
+            const merged = [...apiPlaylists, ...localPlaylists.filter((l: any) => !apiPlaylists.find((a: any) => a._id === l._id))];
+            setPlaylists(merged);
         } catch (err) {
             console.error(err);
+            setPlaylists(JSON.parse(localStorage.getItem('sk_demo_playlists') || '[]'));
         }
     };
 
     const handlePair = async () => {
         try {
-            await axios.post('/api/devices/pair', { code: pairCode });
+            const res = await axios.post('/api/devices/pair', { code: pairCode });
+
+            // Save to LocalStorage
+            const currentLocal = JSON.parse(localStorage.getItem('sk_demo_devices') || '[]');
+            // Check if exists
+            if (!currentLocal.find((d: any) => d._id === res.data._id)) {
+                currentLocal.push(res.data);
+                localStorage.setItem('sk_demo_devices', JSON.stringify(currentLocal));
+            }
+
             setShowPairModal(false);
             setPairCode('');
             fetchDevices();
         } catch (err) {
-            alert('Pairing failed');
+            alert('Pairing failed. Please check the code.');
         }
-    };
-
-    const openAssignModal = (device: any) => {
-        setSelectedDevice(device);
-        setSelectedPlaylistId(device.assignedPlaylist || '');
-        setShowAssignModal(true);
     };
 
     const handleAssign = async () => {
         try {
+            // Optimistic update for demo
+            const updatedDevices = devices.map((d: any) =>
+                d._id === selectedDevice._id ? { ...d, assignedPlaylist: selectedPlaylistId } : d
+            );
+            setDevices(updatedDevices);
+            localStorage.setItem('sk_demo_devices', JSON.stringify(updatedDevices));
+
+            // Try API
             await axios.post(`/api/devices/assign/${selectedDevice._id}`, { playlistId: selectedPlaylistId });
+
             setShowAssignModal(false);
-            fetchDevices();
         } catch (err) {
-            alert('Assignment failed');
+            console.error('API Assignment failed, but saved locally for demo');
+            setShowAssignModal(false);
         }
     };
 
