@@ -124,6 +124,9 @@ export default function PlayerPage() {
                     </div>
                 ) : (
                     <div className="text-center">
+                        <div className="mb-6">
+                            <span className="text-blue-500 font-bold text-2xl tracking-widest border-2 border-blue-500 px-4 py-1 rounded">SK GROUPS</span>
+                        </div>
                         <h1 className="text-4xl font-bold mb-4">Ready to Play</h1>
                         <p className="text-xl text-gray-400">Device: {deviceName}</p>
                         <p className="mt-4 text-yellow-500">No content scheduled. Upload media in CMS.</p>
@@ -134,7 +137,11 @@ export default function PlayerPage() {
     }
 
     return (
-        <div className="h-screen bg-blue-900 text-white flex flex-col items-center justify-center">
+        <div className="h-screen bg-blue-900 text-white flex flex-col items-center justify-center relative">
+            <div className="absolute top-10 left-10">
+                <span className="font-bold text-2xl tracking-widest border-2 border-white px-4 py-1 rounded opacity-80">SK GROUPS</span>
+            </div>
+
             <h1 className="text-5xl font-bold mb-8">Register This Screen</h1>
             <div className="bg-white text-blue-900 px-12 py-6 rounded-2xl text-6xl font-mono font-bold tracking-widest shadow-lg">
                 {pairingCode}
