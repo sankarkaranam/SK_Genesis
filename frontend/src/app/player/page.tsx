@@ -99,9 +99,14 @@ export default function PlayerPage() {
                                 className="w-full h-full object-contain"
                             />
                         ) : (
-                            <div className="w-full h-full flex items-center justify-center">
-                                <p className="text-2xl">Video Playback Not Implemented Yet</p>
-                            </div>
+                            <video
+                                src={content[currentIndex].url}
+                                className="w-full h-full object-contain"
+                                autoPlay
+                                muted
+                                loop
+                                playsInline
+                            />
                         )}
                         <div className="absolute bottom-4 right-4 bg-black bg-opacity-50 px-4 py-2 rounded text-sm">
                             {content[currentIndex].title}
