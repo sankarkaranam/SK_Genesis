@@ -9,13 +9,7 @@ let globalState = {
     content: [] as any[]
 };
 
-export const config = {
-    api: {
-        bodyParser: {
-            sizeLimit: '10mb',
-        },
-    },
-};
+
 
 export async function POST(request: Request) {
     try {
