@@ -49,31 +49,58 @@ export default function PlayerPage() {
 
     useEffect(() => {
         if (isPaired && pairingCode) {
+            // 1. Load from Cache immediately (Instant Playback)
+            const cached = localStorage.getItem(`sk_player_content_${pairingCode}`);
+            if (cached) {
+                try {
+                    const parsed = JSON.parse(cached);
+                    if (parsed.length > 0) setContent(parsed);
+                } catch (e) {
+                    console.error("Cache parse error", e);
+                }
+            }
+
             const fetchContent = async () => {
                 try {
-                    // Fetch content specifically for this device (based on assigned playlist)
-                    // NEW: Use Sync API
+                    // Fetch content specifically for this device
                     const res = await axios.get(`/api/sync?code=${pairingCode}`);
-                    // The API returns items with nested content: { contentId: '...', content: { url: '...', ... } }
-                    // We need to flatten this for the player to use directly
-                    const validItems = (res.data.items || [])
-                        .filter((i: any) => i.content) // Ensure content exists
-                        .map((i: any) => ({
-                            ...i.content, // Spread content properties (url, type, title) to top level
-                            duration: i.duration || 10 // Keep duration from playlist item
-                        }));
+                    const { status, items } = res.data;
 
-                    setContent(validItems);
+                    // "Never-Black" Logic:
+                    // If server lost memory (status='not_found' or 'playlist_not_found'), 
+                    // IGNORE the empty response and keep playing from cache.
+                    if (status === 'not_found' || status === 'playlist_not_found') {
+                        console.warn("Server cold start detected. Keeping local content.");
+                        return;
+                    }
+
+                    // If we have valid items, update cache and state
+                    if (items) {
+                        const validItems = items
+                            .filter((i: any) => i.content)
+                            .map((i: any) => ({
+                                ...i.content,
+                                duration: i.duration || 10
+                            }));
+
+                        // Only update if different to avoid re-renders/flickers
+                        if (JSON.stringify(validItems) !== JSON.stringify(content)) {
+                            setContent(validItems);
+                            localStorage.setItem(`sk_player_content_${pairingCode}`, JSON.stringify(validItems));
+                        }
+                    }
                 } catch (err) {
-                    console.error("Failed to fetch content", err);
+                    console.error("Network failed, playing from cache", err);
+                    // Network error? Do nothing, just keep playing current content.
                 }
             };
+
             fetchContent();
             // Poll for new content every 10 seconds
             const interval = setInterval(fetchContent, 10000);
             return () => clearInterval(interval);
         }
-    }, [isPaired, pairingCode]);
+    }, [isPaired, pairingCode, content]);
 
     // Heartbeat Loop (Runs always, even if no content)
     useEffect(() => {
