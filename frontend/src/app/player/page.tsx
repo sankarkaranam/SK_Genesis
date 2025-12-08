@@ -123,19 +123,26 @@ export default function PlayerPage() {
         return () => clearInterval(interval);
     }, [isPaired, pairingCode, content, currentIndex]);
 
-    // Content Rotation Loop
+    // Content Rotation Loop (Dynamic Duration)
     useEffect(() => {
         if (content.length > 0) {
-            const timer = setInterval(() => {
+            const currentItem = content[currentIndex];
+            // Default to 10 seconds if duration is missing or 0
+            const duration = (currentItem?.duration || 10) * 1000;
+
+            const timer = setTimeout(() => {
                 setCurrentIndex((prev) => (prev + 1) % content.length);
-            }, 5000);
-            return () => clearInterval(timer);
+            }, duration);
+
+            return () => clearTimeout(timer);
         }
-    }, [content]);
+    }, [currentIndex, content]);
 
     // Double Buffering Logic
     const nextIndex = (currentIndex + 1) % content.length;
     const nextItem = content.length > 0 ? content[nextIndex] : null;
+    // Don't double-buffer if there's only 1 item
+    const shouldPreload = content.length > 1 && nextItem;
 
     if (isPaired) {
         return (
@@ -166,7 +173,7 @@ export default function PlayerPage() {
                         </div>
 
                         {/* Next Item (Hidden Pre-loader) */}
-                        {nextItem && (
+                        {shouldPreload && (
                             <div className="w-0 h-0 opacity-0 overflow-hidden absolute">
                                 {nextItem.type === 'image' ? (
                                     <img src={nextItem.url} />
