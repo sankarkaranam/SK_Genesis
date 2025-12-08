@@ -62,19 +62,13 @@ export default function PlayerPage() {
 
             const fetchContent = async () => {
                 try {
-                    // Fetch content specifically for this device
                     const res = await axios.get(`/api/sync?code=${pairingCode}`);
                     const { status, items } = res.data;
 
-                    // "Never-Black" Logic:
-                    // If server lost memory (status='not_found' or 'playlist_not_found'), 
-                    // IGNORE the empty response and keep playing from cache.
                     if (status === 'not_found' || status === 'playlist_not_found') {
-                        console.warn("Server cold start detected. Keeping local content.");
                         return;
                     }
 
-                    // If we have valid items, update cache and state
                     if (items) {
                         const validItems = items
                             .filter((i: any) => i.content)
@@ -83,31 +77,38 @@ export default function PlayerPage() {
                                 duration: i.duration || 10
                             }));
 
-                        // Only update if different to avoid re-renders/flickers
-                        if (JSON.stringify(validItems) !== JSON.stringify(content)) {
-                            setContent(validItems);
-                            localStorage.setItem(`sk_player_content_${pairingCode}`, JSON.stringify(validItems));
-                        }
+                        // Use functional update to access current state without adding to dependency array
+                        setContent(prevContent => {
+                            if (JSON.stringify(validItems) !== JSON.stringify(prevContent)) {
+                                localStorage.setItem(`sk_player_content_${pairingCode}`, JSON.stringify(validItems));
+                                return validItems;
+                            }
+                            return prevContent;
+                        });
                     }
                 } catch (err) {
                     console.error("Network failed, playing from cache", err);
-                    // Network error? Do nothing, just keep playing current content.
                 }
             };
 
             fetchContent();
-            // Poll for new content every 10 seconds
             const interval = setInterval(fetchContent, 10000);
             return () => clearInterval(interval);
         }
-    }, [isPaired, pairingCode, content]);
+    }, [isPaired, pairingCode]); // Removed 'content' dependency to prevent infinite loop
 
-    // Heartbeat Loop (Runs always, even if no content)
+    // Heartbeat Loop
     useEffect(() => {
         if (!isPaired || !pairingCode) return;
 
         const sendHeartbeat = async () => {
             try {
+                // Access content via closure or ref if needed, but for heartbeat 
+                // we can just send what we have. 
+                // Since we removed content from deps in fetch loop, let's keep it here 
+                // but ensure it doesn't trigger excessive re-renders.
+                // Actually, heartbeat DOES need to know current content.
+                // But let's make it robust.
                 const currentItem = content.length > 0 ? content[currentIndex] : null;
                 await axios.post(`/api/devices/heartbeat/${pairingCode}`, {
                     currentContent: currentItem
@@ -117,10 +118,7 @@ export default function PlayerPage() {
             }
         };
 
-        // Send immediately
         sendHeartbeat();
-
-        // Then every 10 seconds
         const interval = setInterval(sendHeartbeat, 10000);
         return () => clearInterval(interval);
     }, [isPaired, pairingCode, content, currentIndex]);
@@ -130,15 +128,14 @@ export default function PlayerPage() {
         if (content.length > 0) {
             const timer = setInterval(() => {
                 setCurrentIndex((prev) => (prev + 1) % content.length);
-            }, 5000); // Rotate every 5 seconds
-
+            }, 5000);
             return () => clearInterval(timer);
         }
     }, [content]);
 
     // Double Buffering Logic
     const nextIndex = (currentIndex + 1) % content.length;
-    const nextItem = content[nextIndex];
+    const nextItem = content.length > 0 ? content[nextIndex] : null;
 
     if (isPaired) {
         return (
@@ -169,14 +166,15 @@ export default function PlayerPage() {
                         </div>
 
                         {/* Next Item (Hidden Pre-loader) */}
-                        {/* This forces the browser to download the asset before we need it */}
-                        <div className="w-0 h-0 opacity-0 overflow-hidden absolute">
-                            {nextItem.type === 'image' ? (
-                                <img src={nextItem.url} />
-                            ) : (
-                                <video src={nextItem.url} preload="auto" />
-                            )}
-                        </div>
+                        {nextItem && (
+                            <div className="w-0 h-0 opacity-0 overflow-hidden absolute">
+                                {nextItem.type === 'image' ? (
+                                    <img src={nextItem.url} />
+                                ) : (
+                                    <video src={nextItem.url} preload="auto" />
+                                )}
+                            </div>
+                        )}
                     </>
                 ) : (
                     <div className="text-center z-20">
