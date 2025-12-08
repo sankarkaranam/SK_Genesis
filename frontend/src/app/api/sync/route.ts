@@ -37,11 +37,19 @@ export async function POST(request: Request) {
                     else globalState.content.push(c);
                 });
             }
+            if (data.schedules) {
+                data.schedules.forEach((s: any) => {
+                    const existing = globalState.schedules.findIndex(es => es._id === s._id);
+                    if (existing >= 0) globalState.schedules[existing] = s;
+                    else globalState.schedules.push(s);
+                });
+            }
             return NextResponse.json({
                 status: 'synced', count: {
                     devices: globalState.devices.length,
                     playlists: globalState.playlists.length,
-                    content: globalState.content.length
+                    content: globalState.content.length,
+                    schedules: globalState.schedules.length
                 }
             });
         }

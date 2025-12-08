@@ -4,5 +4,6 @@
 export const db = {
     devices: [] as any[],
     content: [] as any[],
-    playlists: [] as any[]
+    playlists: [] as any[],
+    schedules: [] as any[]
 };

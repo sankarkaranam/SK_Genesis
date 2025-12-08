@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { LayoutDashboard, Monitor, Image, ListVideo, Settings } from 'lucide-react';
+import { LayoutDashboard, Monitor, Image, ListVideo, Settings, CalendarClock } from 'lucide-react';
 
 const Sidebar = () => {
     return (
@@ -15,6 +15,10 @@ const Sidebar = () => {
                 <Link href="/screens" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition">
                     <Monitor size={20} />
                     <span>Screens</span>
+                </Link>
+                <Link href="/schedules" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition">
+                    <CalendarClock size={20} />
+                    <span>Schedules</span>
                 </Link>
                 <Link href="/content" className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-800 transition">
                     <Image size={20} />
