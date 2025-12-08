@@ -102,7 +102,8 @@ export default function ScreensPage() {
             // Try API
             await axios.post(`/api/devices/assign/${selectedDevice._id}`, {
                 playlistId: selectedPlaylistId,
-                playlistData
+                playlistData,
+                deviceData: selectedDevice // Send full device data for self-healing
             });
 
             setShowAssignModal(false);

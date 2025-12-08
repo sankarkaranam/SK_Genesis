@@ -3,8 +3,14 @@ import { db } from '@/lib/db';
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
-    const { playlistId, playlistData } = await request.json();
-    const device = db.devices.find(d => d._id === id);
+    const { playlistId, playlistData, deviceData } = await request.json();
+    let device = db.devices.find(d => d._id === id);
+
+    // SELF-HEALING: If device is missing (server restart) but we have the data, restore it
+    if (!device && deviceData) {
+        device = deviceData;
+        db.devices.push(device);
+    }
 
     if (!device) return NextResponse.json({ error: 'Device not found' }, { status: 404 });
 
