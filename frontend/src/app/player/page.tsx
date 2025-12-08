@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 
 export default function PlayerPage() {
@@ -46,15 +46,19 @@ export default function PlayerPage() {
 
     const [content, setContent] = useState<any[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
+    const lastContentString = useRef('');
 
     useEffect(() => {
         if (isPaired && pairingCode) {
-            // 1. Load from Cache immediately (Instant Playback)
+            // 1. Load from Cache immediately
             const cached = localStorage.getItem(`sk_player_content_${pairingCode}`);
             if (cached) {
                 try {
                     const parsed = JSON.parse(cached);
-                    if (parsed.length > 0) setContent(parsed);
+                    if (parsed.length > 0) {
+                        setContent(parsed);
+                        lastContentString.current = cached;
+                    }
                 } catch (e) {
                     console.error("Cache parse error", e);
                 }
@@ -65,9 +69,7 @@ export default function PlayerPage() {
                     const res = await axios.get(`/api/sync?code=${pairingCode}`);
                     const { status, items } = res.data;
 
-                    if (status === 'not_found' || status === 'playlist_not_found') {
-                        return;
-                    }
+                    if (status === 'not_found' || status === 'playlist_not_found') return;
 
                     if (items) {
                         const validItems = items
@@ -77,25 +79,27 @@ export default function PlayerPage() {
                                 duration: i.duration || 10
                             }));
 
-                        // Use functional update to access current state without adding to dependency array
-                        setContent(prevContent => {
-                            if (JSON.stringify(validItems) !== JSON.stringify(prevContent)) {
-                                localStorage.setItem(`sk_player_content_${pairingCode}`, JSON.stringify(validItems));
-                                return validItems;
-                            }
-                            return prevContent;
-                        });
+                        const newContentString = JSON.stringify(validItems);
+
+                        // CRITICAL FIX: Only update state if content actually changed
+                        if (newContentString !== lastContentString.current) {
+                            console.log("New content detected, updating player...");
+                            setContent(validItems);
+                            lastContentString.current = newContentString;
+                            localStorage.setItem(`sk_player_content_${pairingCode}`, newContentString);
+                        }
                     }
                 } catch (err) {
-                    console.error("Network failed, playing from cache", err);
+                    console.error("Network failed, playing from cache");
                 }
             };
 
             fetchContent();
-            const interval = setInterval(fetchContent, 10000);
+            // Increase polling to 15s to prevent network flooding
+            const interval = setInterval(fetchContent, 15000);
             return () => clearInterval(interval);
         }
-    }, [isPaired, pairingCode]); // Removed 'content' dependency to prevent infinite loop
+    }, [isPaired, pairingCode]);
 
     // Heartbeat Loop
     useEffect(() => {
@@ -126,13 +130,22 @@ export default function PlayerPage() {
     // Content Rotation Loop (Dynamic Duration)
     useEffect(() => {
         if (content.length > 0) {
+            // Safety: Ensure index is valid
+            if (currentIndex >= content.length) {
+                setCurrentIndex(0);
+                return;
+            }
+
             const currentItem = content[currentIndex];
-            // Default to 10 seconds if duration is missing or 0
-            const duration = (currentItem?.duration || 10) * 1000;
+            // Parse duration safely, default to 10s, min 5s
+            let durationSec = parseInt(currentItem?.duration || '10', 10);
+            if (isNaN(durationSec) || durationSec < 5) durationSec = 10;
+
+            const durationMs = durationSec * 1000;
 
             const timer = setTimeout(() => {
                 setCurrentIndex((prev) => (prev + 1) % content.length);
-            }, duration);
+            }, durationMs);
 
             return () => clearTimeout(timer);
         }
@@ -141,10 +154,14 @@ export default function PlayerPage() {
     // Double Buffering Logic
     const nextIndex = (currentIndex + 1) % content.length;
     const nextItem = content.length > 0 ? content[nextIndex] : null;
-    // Don't double-buffer if there's only 1 item
     const shouldPreload = content.length > 1 && nextItem;
 
     if (isPaired) {
+        // Safety: If content exists but index is bad, don't crash
+        if (content.length > 0 && !content[currentIndex]) {
+            return <div className="bg-black h-screen text-white flex items-center justify-center">Loading...</div>;
+        }
+
         return (
             <div className="h-screen bg-black text-white flex items-center justify-center overflow-hidden relative">
                 {content.length > 0 ? (
@@ -153,12 +170,14 @@ export default function PlayerPage() {
                         <div className="w-full h-full absolute inset-0 z-10">
                             {content[currentIndex].type === 'image' ? (
                                 <img
+                                    key={`current-${currentIndex}`} // Force re-render
                                     src={content[currentIndex].url}
                                     alt={content[currentIndex].title}
                                     className="w-full h-full object-contain"
                                 />
                             ) : (
                                 <video
+                                    key={`current-${currentIndex}`} // Force re-render
                                     src={content[currentIndex].url}
                                     className="w-full h-full object-contain"
                                     autoPlay
