@@ -136,33 +136,50 @@ export default function PlayerPage() {
         }
     }, [content]);
 
+    // Double Buffering Logic
+    const nextIndex = (currentIndex + 1) % content.length;
+    const nextItem = content[nextIndex];
+
     if (isPaired) {
         return (
-            <div className="h-screen bg-black text-white flex items-center justify-center overflow-hidden">
+            <div className="h-screen bg-black text-white flex items-center justify-center overflow-hidden relative">
                 {content.length > 0 ? (
-                    <div className="w-full h-full relative">
-                        {content[currentIndex].type === 'image' ? (
-                            <img
-                                src={content[currentIndex].url}
-                                alt={content[currentIndex].title}
-                                className="w-full h-full object-contain"
-                            />
-                        ) : (
-                            <video
-                                src={content[currentIndex].url}
-                                className="w-full h-full object-contain"
-                                autoPlay
-                                muted
-                                loop
-                                playsInline
-                            />
-                        )}
-                        <div className="absolute bottom-4 right-4 bg-black bg-opacity-50 px-4 py-2 rounded text-sm">
-                            {content[currentIndex].title}
+                    <>
+                        {/* Current Item (Visible) */}
+                        <div className="w-full h-full absolute inset-0 z-10">
+                            {content[currentIndex].type === 'image' ? (
+                                <img
+                                    src={content[currentIndex].url}
+                                    alt={content[currentIndex].title}
+                                    className="w-full h-full object-contain"
+                                />
+                            ) : (
+                                <video
+                                    src={content[currentIndex].url}
+                                    className="w-full h-full object-contain"
+                                    autoPlay
+                                    muted
+                                    loop
+                                    playsInline
+                                />
+                            )}
+                            <div className="absolute bottom-4 right-4 bg-black bg-opacity-50 px-4 py-2 rounded text-sm">
+                                {content[currentIndex].title}
+                            </div>
                         </div>
-                    </div>
+
+                        {/* Next Item (Hidden Pre-loader) */}
+                        {/* This forces the browser to download the asset before we need it */}
+                        <div className="w-0 h-0 opacity-0 overflow-hidden absolute">
+                            {nextItem.type === 'image' ? (
+                                <img src={nextItem.url} />
+                            ) : (
+                                <video src={nextItem.url} preload="auto" />
+                            )}
+                        </div>
+                    </>
                 ) : (
-                    <div className="text-center">
+                    <div className="text-center z-20">
                         <div className="mb-6">
                             <span className="text-blue-500 font-bold text-2xl tracking-widest border-2 border-blue-500 px-4 py-1 rounded">SK GROUPS</span>
                         </div>
