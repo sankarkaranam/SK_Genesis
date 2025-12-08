@@ -54,7 +54,16 @@ export default function PlayerPage() {
                     // Fetch content specifically for this device (based on assigned playlist)
                     // NEW: Use Sync API
                     const res = await axios.get(`/api/sync?code=${pairingCode}`);
-                    setContent(res.data.items || []);
+                    // The API returns items with nested content: { contentId: '...', content: { url: '...', ... } }
+                    // We need to flatten this for the player to use directly
+                    const validItems = (res.data.items || [])
+                        .filter((i: any) => i.content) // Ensure content exists
+                        .map((i: any) => ({
+                            ...i.content, // Spread content properties (url, type, title) to top level
+                            duration: i.duration || 10 // Keep duration from playlist item
+                        }));
+
+                    setContent(validItems);
                 } catch (err) {
                     console.error("Failed to fetch content", err);
                 }
