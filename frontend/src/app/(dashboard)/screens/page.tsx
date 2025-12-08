@@ -81,8 +81,29 @@ export default function ScreensPage() {
             setDevices(updatedDevices);
             localStorage.setItem('sk_demo_devices', JSON.stringify(updatedDevices));
 
+            // Prepare payload with full data for server persistence
+            const playlist = playlists.find((p: any) => p._id === selectedPlaylistId);
+            let playlistData = null;
+
+            if (playlist) {
+                // Enrich playlist items with content details from local storage if needed
+                // We need to fetch content list first if we don't have it in state, but we can try to read from LS
+                const localContent = JSON.parse(localStorage.getItem('sk_demo_content') || '[]');
+
+                playlistData = {
+                    ...playlist,
+                    items: playlist.items.map((item: any) => ({
+                        ...item,
+                        contentDetails: localContent.find((c: any) => c._id === item.contentId)
+                    }))
+                };
+            }
+
             // Try API
-            await axios.post(`/api/devices/assign/${selectedDevice._id}`, { playlistId: selectedPlaylistId });
+            await axios.post(`/api/devices/assign/${selectedDevice._id}`, {
+                playlistId: selectedPlaylistId,
+                playlistData
+            });
 
             setShowAssignModal(false);
         } catch (err) {
